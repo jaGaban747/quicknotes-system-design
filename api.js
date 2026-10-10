@@ -11,6 +11,7 @@ const notesList = document.querySelector("#notes-list");
 
 // The notes currently shown on the page
 let notes = [];
+const MAX_TITLE = 100;
 
 // 2. Show a message in the status line (type: loading, success or error)
 function setStatus(message, type = "") {
@@ -77,5 +78,59 @@ async function loadNotes() {
   }
 }
 
-// 6. Listeners
+// 6. Validation: a title is required, up to 100 characters. The body is optional.
+function validateTitle(title) {
+  if (title === "") return "A title is required.";
+  if (title.length > MAX_TITLE) {
+    return `The title must be ${MAX_TITLE} characters or fewer (yours is ${title.length}).`;
+  }
+  return "";
+}
+
+// 7. POST: create a note
+async function createNote(title, body) {
+  submitBtn.disabled = true;
+  setStatus("Creating note...", "loading");
+
+  try {
+    const result = await request(API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({ title: title, body: body, userId: 1 }),
+    });
+
+    // The server echoes the note back with a new id. isLocal marks notes that
+    // only exist on this page, because JSONPlaceholder does not really save them.
+    const created = { ...result.data, isLocal: true };
+    notes.unshift(created);
+    renderNotes();
+    setStatus(
+      `Note created (status ${result.status}, id ${created.id}).`,
+      "success"
+    );
+    form.reset();
+  } catch (error) {
+    console.error(error);
+    setStatus("Sorry, we could not create the note. Please try again.", "error");
+  } finally {
+    submitBtn.disabled = false;
+  }
+}
+
+// 8. Listeners
 loadBtn.addEventListener("click", loadNotes);
+
+form.addEventListener("submit", (event) => {
+  event.preventDefault();
+  const title = titleInput.value.trim();
+  const body = bodyInput.value.trim();
+
+  const problem = validateTitle(title);
+  if (problem) {
+    setStatus(problem, "error");
+    titleInput.focus();
+    return;
+  }
+
+  createNote(title, body);
+});
