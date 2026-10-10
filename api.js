@@ -55,7 +55,13 @@ function renderNotes() {
     const body = document.createElement("p");
     body.textContent = note.body;
 
-    li.append(title, body);
+        const del = document.createElement("button");
+    del.type = "button";
+    del.classList.add("delete-btn");
+    del.textContent = "Delete";
+    del.addEventListener("click", () => deleteNote(note, del));
+
+    li.append(title, body, del);
     notesList.append(li);
   });
 }
@@ -114,6 +120,31 @@ async function createNote(title, body) {
     setStatus("Sorry, we could not create the note. Please try again.", "error");
   } finally {
     submitBtn.disabled = false;
+  }
+}
+
+// DELETE: remove a note.
+// JSONPlaceholder fakes writes: it accepts requests but never stores anything,
+// so a note created on this page does not exist on the server. For those notes
+// (isLocal) we only remove them from the list. Notes loaded from the server get
+// a real DELETE request. We match notes by object, not id, because every
+// created note comes back with the same id (101).
+async function deleteNote(note, button) {
+  button.disabled = true;
+  setStatus("Deleting note...", "loading");
+
+  try {
+    if (!note.isLocal) {
+      await request(`${API_URL}/${note.id}`, { method: "DELETE" });
+    }
+    notes = notes.filter((item) => item !== note);
+    renderNotes();
+    setStatus("Note deleted.", "success");
+  } catch (error) {
+    console.error(error);
+    setStatus("Sorry, we could not delete the note. Please try again.", "error");
+  } finally {
+    button.disabled = false;
   }
 }
 
